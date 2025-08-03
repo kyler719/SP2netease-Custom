@@ -14,8 +14,13 @@
 
 ## 安装方法
 
-1. 安装[Tampermonkey](https://www.tampermonkey.net/)浏览器扩展
-2. 下载js文件，打开脚本管理页面 拖入
+1. 安装[ScriptCat](https://scriptcat.org/)浏览器扩展
+   - Chrome/Edge: 通过Chrome Web Store安装
+   - Firefox: 通过Firefox Add-ons安装
+2. 安装本脚本
+   - 点击ScriptCat扩展图标
+   - 点击上方小房子图标打开管理界面
+   - 将`Netease2SP.js`文件直接拖入完成安装
 
 ## 功能特点
 
