@@ -1,18 +1,96 @@
 // ==UserScript==
 // @name         SP2netease Custom
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Click a floating button to get the last played song from Last.fm and search it on Netease Music
 // @author       You
 // @match        *://*/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      last.fm
 // ==/UserScript==
 
 (function() {
     'use strict';
 
+    // 存储工具函数
+    const storage = {
+        // 设置存储
+        setItem: function(key, value) {
+            try {
+                // 首先尝试使用油猴存储API（跨域）
+                if (typeof GM_setValue !== 'undefined') {
+                    GM_setValue(key, value);
+                    console.log('使用GM_setValue保存:', key, value);
+                    return;
+                }
+            } catch (e) {
+                console.log('GM_setValue不可用:', e);
+            }
+            
+            try {
+                // 然后尝试使用localStorage
+                localStorage.setItem(key, value);
+                console.log('使用localStorage保存:', key, value);
+            } catch (e) {
+                // localStorage不可用时使用cookie
+                console.log('localStorage不可用，使用cookie保存:', key, value);
+                this.setCookie(key, value, 365);
+            }
+        },
+        
+        // 获取存储
+        getItem: function(key) {
+            try {
+                // 首先尝试使用油猴存储API（跨域）
+                if (typeof GM_getValue !== 'undefined') {
+                    const value = GM_getValue(key, null);
+                    console.log('从GM_getValue读取:', key, value);
+                    return value;
+                }
+            } catch (e) {
+                console.log('GM_getValue不可用:', e);
+            }
+            
+            try {
+                // 然后尝试使用localStorage
+                const value = localStorage.getItem(key);
+                console.log('从localStorage读取:', key, value);
+                return value;
+            } catch (e) {
+                // localStorage不可用时使用cookie
+                console.log('localStorage不可用，从cookie读取:', key);
+                return this.getCookie(key);
+            }
+        },
+        
+        // 设置cookie
+        setCookie: function(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            // 设置cookie为跨域共享
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; domain=." + window.location.hostname.split('.').slice(-2).join('.');
+        },
+        
+        // 获取cookie
+        getCookie: function(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+    };
+    
     // 创建设置面板
     const createSettingsPanel = () => {
         // 创建面板元素
@@ -27,10 +105,24 @@
             </div>
             <div class="netease-settings-content">
                 <label for="lastfm-username">用户名:</label>
-                <input type="text" id="lastfm-username" value="${localStorage.getItem('lastfmUsername') || ''}" placeholder="请输入Last.fm用户名">
+                <input type="text" id="lastfm-username" placeholder="请输入Last.fm用户名">
                 <button id="save-settings">保存</button>
             </div>
         `;
+        
+        // 设置输入框的默认值
+        const usernameInput = panel.querySelector('#lastfm-username');
+        const savedUsername = storage.getItem('lastfmUsername');
+        
+        // 调试信息
+        console.log('从存储中读取到的用户名:', savedUsername);
+        
+        if (savedUsername !== null && savedUsername !== '') {
+            usernameInput.value = savedUsername;
+            console.log('设置输入框默认值为:', savedUsername);
+        } else {
+            console.log('未设置输入框默认值');
+        }
         
         // 设置面板为浮动窗口样式
         panel.style.cssText = `
@@ -116,11 +208,17 @@
         document.getElementById('save-settings').addEventListener('click', () => {
             const username = document.getElementById('lastfm-username').value.trim();
             if (username) {
-                localStorage.setItem('lastfmUsername', username);
-                alert('设置已保存');
-                panel.remove();
+                try {
+                    storage.setItem('lastfmUsername', username);
+                    alert('设置已保存');
+                    panel.remove();
+                } catch (e) {
+                    alert('保存失败: ' + e.message);
+                    // 保存失败时不移除面板，让用户重新尝试
+                }
             } else {
                 alert('请输入有效的用户名');
+                // 不移除面板，让用户重新输入
             }
         });
         
@@ -175,8 +273,8 @@
         `);
         
         // 设置按钮初始位置
-        // 从localStorage读取保存的位置，如果没有则使用默认位置
-        const savedPosition = localStorage.getItem('neteaseButtonPosition');
+        // 从存储中读取保存的位置，如果没有则使用默认位置
+        const savedPosition = storage.getItem('neteaseButtonPosition');
         if (savedPosition) {
             const position = JSON.parse(savedPosition);
             button.style.left = position.x + 'px';
@@ -208,12 +306,12 @@
             isDragging = false;
             button.style.cursor = 'pointer';
             
-            // 保存按钮位置到localStorage
+            // 保存按钮位置到存储
             const position = {
                 x: button.offsetLeft,
                 y: button.offsetTop
             };
-            localStorage.setItem('neteaseButtonPosition', JSON.stringify(position));
+            storage.setItem('neteaseButtonPosition', JSON.stringify(position));
         });
         
         // 添加右键点击功能打开设置
@@ -263,11 +361,14 @@
     
     // 直接搜索功能 - 在网易云音乐中搜索
     const searchDirectly = () => {
-        // 从localStorage读取保存的Last.fm用户名
-        const lastfmUsername = localStorage.getItem('lastfmUsername');
+        // 从存储中读取保存的Last.fm用户名
+        const lastfmUsername = storage.getItem('lastfmUsername');
+        
+        // 调试信息
+        console.log('读取到的Last.fm用户名:', lastfmUsername);
         
         // 检查用户名是否存在
-        if (!lastfmUsername) {
+        if (!lastfmUsername || lastfmUsername.trim() === '') {
             alert('请先设置Last.fm用户名');
             createSettingsPanel();
             return;
@@ -283,6 +384,7 @@
                 
                 // 获取最近播放的歌曲信息
                 const recentTracks = doc.querySelector('.chartlist tbody tr');
+                
                 if (!recentTracks) {
                     alert('无法找到最近播放的歌曲信息');
                     return;
