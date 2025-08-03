@@ -1,3 +1,7 @@
+
+
+![示例图片](https://raw.githubusercontent.com/kyler719/SP2netease-Custom/refs/heads/main/Demo.png)
+
 # SP2netease Custom
 
 这是一个油猴脚本，可以在任何网页上显示一个浮动按钮，
