@@ -20,7 +20,7 @@
 ## 安装方法
 
 1. 安装[Tampermonkey](https://www.tampermonkey.net/)浏览器扩展
-2. 打开脚本管理页面降将本拖入
+2. 下载js文件，打开脚本管理页面 拖入
 
 ## 使用说明
 
