@@ -2,7 +2,7 @@
 
 ![示例图片](https://raw.githubusercontent.com/kyler719/SP2netease-Custom/refs/heads/main/Demo.png)
 
-# SP2netease Custom
+# Spotify 跳转 网易云搜索 油猴脚本
 
 这是一个油猴脚本，可以在任何网页上显示一个浮动按钮，
 点击后自动获取 Spotify 最近播放的歌曲并在 网易云音乐中搜索。
